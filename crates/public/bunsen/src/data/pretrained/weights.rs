@@ -26,7 +26,7 @@ use serde::{
     Serialize,
 };
 
-#[cfg(feature = "cache")]
+#[cfg(feature = "fetch")]
 use crate::data::cache::BunsenDiskCache;
 use crate::errors::{
     BunsenError,
@@ -105,6 +105,10 @@ pub enum WeightsFormat {
 
     /// A `burn` `burnpack` store.
     Burnpack,
+
+    /// A `tiktoken` rank file: a vocabulary, not weights, but named, pinned,
+    /// sourced and cached the same way.
+    Tiktoken,
 }
 
 impl WeightsFormat {
@@ -127,6 +131,7 @@ impl fmt::Display for WeightsFormat {
             Self::Pytorch { dtype } => write!(f, "pytorch {dtype}"),
             Self::Safetensors { dtype } => write!(f, "safetensors {dtype}"),
             Self::Burnpack => f.write_str("burnpack"),
+            Self::Tiktoken => f.write_str("tiktoken"),
         }
     }
 }
@@ -236,6 +241,9 @@ pub struct StaticPretrainedWeightsDescriptor<'a> {
     /// Where the weights are published.
     pub origin: Option<&'a str>,
 
+    /// The prefab these weights instantiate, by name in the kit's prefab map.
+    pub prefab: &'a str,
+
     /// Other names the same bytes answer to.
     pub aliases: &'a [&'a str],
 
@@ -254,6 +262,14 @@ pub struct StaticPretrainedWeightsDescriptor<'a> {
 }
 
 impl StaticPretrainedWeightsDescriptor<'_> {
+    /// Does `name` name these weights, by their name or an alias?
+    pub fn matches(
+        &self,
+        name: &str,
+    ) -> bool {
+        self.name == name || self.aliases.contains(&name)
+    }
+
     /// Converts to a [`PretrainedWeightsDescriptor`].
     pub fn to_descriptor(&self) -> PretrainedWeightsDescriptor {
         PretrainedWeightsDescriptor {
@@ -261,6 +277,7 @@ impl StaticPretrainedWeightsDescriptor<'_> {
             description: self.description.to_string(),
             license: self.license.map(|s| s.to_string()),
             origin: self.origin.map(|s| s.to_string()),
+            prefab: self.prefab.to_string(),
             aliases: self.aliases.iter().map(|s| s.to_string()).collect(),
             file: self.file.to_string(),
             sha256: self.sha256.map(|s| s.to_string()),
@@ -294,6 +311,9 @@ pub struct PretrainedWeightsDescriptor {
 
     /// Where the weights are published.
     pub origin: Option<String>,
+
+    /// The prefab these weights instantiate, by name in the kit's prefab map.
+    pub prefab: String,
 
     /// Other names the same bytes answer to.
     pub aliases: Vec<String>,
@@ -387,7 +407,7 @@ impl PretrainedWeightsDescriptor {
     /// # Errors
     /// [`BunsenError::Invalid`] with no URL source; otherwise as
     /// [`BunsenDiskCache::load_cached_path`].
-    #[cfg(feature = "cache")]
+    #[cfg(feature = "fetch")]
     pub fn fetch_weights(
         &self,
         disk_cache: &BunsenDiskCache,
@@ -502,6 +522,7 @@ mod tests {
             description: "some description of my model.",
             license: Some("MIT"),
             origin: Some("https://github.com/my_org/my_model"),
+            prefab: "my_prefab",
             aliases: &["my-model", "latest"],
             file: "my_model.pt",
             sha256: Some(ABC_SHA256),
@@ -523,6 +544,7 @@ mod tests {
         assert_eq!(d.name, "my_model");
         assert_eq!(d.description, MY_MODEL.description);
         assert_eq!(d.license.as_deref(), Some("MIT"));
+        assert_eq!(d.prefab, "my_prefab");
         assert_eq!(
             d.aliases,
             vec!["my-model".to_string(), "latest".to_string()]
@@ -617,6 +639,7 @@ mod tests {
             "safetensors bf16"
         );
         assert_eq!(WeightsFormat::Burnpack.to_string(), "burnpack");
+        assert_eq!(WeightsFormat::Tiktoken.to_string(), "tiktoken");
         let sources: Vec<String> = MY_MODEL.sources.iter().map(|s| s.to_string()).collect();
         assert_eq!(
             sources,
