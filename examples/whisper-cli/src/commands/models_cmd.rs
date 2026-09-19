@@ -1,6 +1,16 @@
-use bunsen::errors::{
-    BunsenError,
-    BunsenResult,
+use bunsen::{
+    data::cache::verify_sha256,
+    errors::{
+        BunsenError,
+        BunsenResult,
+    },
+    kits::speech::whisper::{
+        WhisperGeometry,
+        pretrained::{
+            WHISPER_PREFABS,
+            prefab_for_geometry,
+        },
+    },
 };
 use clap_common::logging::{
     LogArgs,
@@ -12,11 +22,6 @@ use crate::{
         loader::{
             ModelRef,
             scan_model,
-        },
-        prefab::{
-            WHISPER_PREFABS,
-            WhisperGeometry,
-            prefab_for_geometry,
         },
         pretrained::PROVIDERS,
         weights_cache::WeightsCache,
@@ -159,7 +164,7 @@ fn fetch(
         if verify {
             match &model {
                 ModelRef::Pretrained { pretrained, .. } => {
-                    WeightsCache::verify(&located.path, pretrained.sha256)?;
+                    verify_sha256(&located.path, pretrained.sha256)?;
                     println!("  sha256 {} ok", pretrained.sha256);
                 }
                 ModelRef::Path(_) => {

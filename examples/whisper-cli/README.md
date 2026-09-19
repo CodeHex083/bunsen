@@ -154,12 +154,13 @@ tensors.
 The index is worked out in this crate, against real files, as the shape a `kits::speech::whisper::pretrained` index
 could take. Two things it needed are not in bunsen yet:
 
-- `data::pretrained::StaticPretrainedWeightsDescriptor` has a name and URLs but no digest, no format and no local
-  sources, so the prefab table uses bunsen's `StaticPreFabMap` with `weights: None` and the pretrained side is this
-  crate's `WhisperPretrained`.
-- `data::cache::BunsenDiskCache::load_cached_path` has no digest (`// TODO: hash`) and drops the per-file result of a
-  download, so a 404 returns `Ok` with nothing on disk. The transfer here is this crate's; the disk cache decides only
-  where files go.
+- The prefab table is bunsen's now (`kits::speech::whisper::pretrained::WHISPER_PREFABS`, with `WhisperGeometry`
+  beside `WhisperApiConfig`), and `data::pretrained::StaticPretrainedWeightsDescriptor` carries a digest, a format,
+  aliases and local sources. The provider index over it (`openai/tiny.en`) is still this crate's
+  `WhisperPretrained`; it moves next.
+- `data::cache::BunsenDiskCache::load_cached_path` names a file by its first URL and knows nothing of bundled files or
+  another tool's cache, so the resolution order here (bundled, upstream's cache, then URLs) is this crate's. The
+  transfer itself is bunsen's `fetch_verified`: streamed to a `.partial`, hashed as it lands, renamed on a match.
 
 ## Benchmarks
 

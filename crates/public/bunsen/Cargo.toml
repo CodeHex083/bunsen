@@ -42,7 +42,6 @@ default = [
     "reflection",
     "train",
     "testing",
-    "store",
     "store_pytorch",
 ]
 
@@ -78,12 +77,21 @@ train = [
     "dep:hashbrown",
 ]
 
-## Enable the disk cache.
+## Enable the disk cache: where files land, and the fetch (`ureq` + `sha2`)
+## that streams them in, digest-checked when pinned.
 cache = [
     "std",
-    "dep:downloader",
     "dep:directories-next",
-    "downloader/default-tls",
+    "dep:sha2",
+    "dep:ureq",
+]
+
+## Draws a byte progress bar on stderr for each cache transfer, through
+## `indicatif`. When on, `BunsenDiskCacheOptions::default()` carries an
+## `IndicatifObserver`; `without_transfer_observers()` drops it.
+indicatif = [
+    "cache",
+    "dep:indicatif",
 ]
 
 ## Enables audio io support features.
@@ -199,8 +207,9 @@ crc = { workspace = true }
 flate2 = { workspace = true }
 
 directories-next = { workspace = true, optional = true }
-# features=["tui"] incompatible with conflicting indicatif versions.
-downloader = { workspace = true, default-features = false, optional = true }
+indicatif = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
 
 dashmap = { workspace = true }
 
@@ -238,3 +247,4 @@ nearly = { workspace = true }
 hamcrest = { workspace = true }
 indoc = { workspace = true }
 criterion = { workspace = true }
+tempfile = { workspace = true }
